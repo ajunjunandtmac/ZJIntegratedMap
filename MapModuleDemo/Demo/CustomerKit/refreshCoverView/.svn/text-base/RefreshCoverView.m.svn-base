@@ -1,0 +1,155 @@
+//
+//  RefreshCoverView.m
+//  Tea
+//
+//  Created by jiale on 16/7/13.
+//  Copyright © 2016年 jiale. All rights reserved.
+//
+
+#import "RefreshCoverView.h"
+#import "Masonry.h"
+@interface RefreshCoverView ()
+@property(nonatomic,weak)UIActivityIndicatorView *activityIndicatorView;
+@property(nonatomic,weak)UIView *refreshAgainBackView;
+@property(nonatomic,copy)serverErrorHandler handler;
+//@property(nonatomic,assign)UIEdgeInsets edgeToView;
+//@property(nonatomic,weak)UIView *fatherView;
+@end
+static RefreshCoverView *cover_static = nil;
+@implementation RefreshCoverView
+- (instancetype)init
+{
+    self = [super init];
+    if (self) {
+        self.hidden = YES;
+        self.backgroundColor = [UIColor whiteColor];
+        UIActivityIndicatorView *activityIndicatorView = [[UIActivityIndicatorView alloc] init];
+        activityIndicatorView.activityIndicatorViewStyle = UIActivityIndicatorViewStyleWhiteLarge;
+        activityIndicatorView.color = [UIColor blackColor];
+        [self addSubview:activityIndicatorView];
+        [activityIndicatorView mas_makeConstraints:^(MASConstraintMaker *make) {
+            make.center.equalTo(self);
+            make.width.and.height.mas_equalTo(50);
+        }];
+        self.activityIndicatorView = activityIndicatorView;
+        
+        UIView *refreshAgainBackView = [[UIView alloc] init];
+        refreshAgainBackView.userInteractionEnabled = YES;
+        refreshAgainBackView.hidden = YES;
+        [self addSubview:refreshAgainBackView];
+        [refreshAgainBackView mas_makeConstraints:^(MASConstraintMaker *make) {
+            make.center.equalTo(self);
+            make.width.mas_equalTo(200);
+            make.height.mas_equalTo(200);
+        }];
+        
+        UITapGestureRecognizer *tap = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(refreshAgain)];
+        [refreshAgainBackView addGestureRecognizer:tap];
+        
+        UIImageView *refreshImageView = [[UIImageView alloc] init];
+        refreshImageView.image = [UIImage imageNamed:@"refresh_again"];
+        [refreshAgainBackView addSubview:refreshImageView];
+        [refreshImageView mas_makeConstraints:^(MASConstraintMaker *make) {
+            make.centerX.equalTo(refreshAgainBackView);
+            make.centerY.equalTo(refreshAgainBackView).with.offset(-10);
+            make.width.mas_equalTo(40);
+            make.height.mas_equalTo(35);
+        }];
+        self.refreshAgainBackView = refreshAgainBackView;
+        
+        UILabel *refreshTipLabel = [[UILabel alloc] init];
+        refreshTipLabel.textAlignment = NSTextAlignmentCenter;
+        refreshTipLabel.font = [UIFont systemFontOfSize:12];
+        refreshTipLabel.text = @"服务器开小差了，点击重新刷新";
+        [refreshAgainBackView addSubview:refreshTipLabel];
+        [refreshTipLabel mas_makeConstraints:^(MASConstraintMaker *make) {
+            make.top.equalTo(refreshImageView.mas_bottom).with.offset(10);
+            make.left.and.right.equalTo(refreshAgainBackView);
+            make.height.mas_equalTo(20);
+        }];
+    }
+    return self;
+}
+
+
+- (void)startRefreshing
+{
+    self.hidden = NO;
+    [_activityIndicatorView startAnimating];
+}
+
+- (void)stopRefreshing
+{
+    [_activityIndicatorView stopAnimating];
+    self.hidden = YES;
+    self.backgroundColor = [UIColor whiteColor];
+}
+
+- (void)stopRefreshingDueToServerErrorWithHandler:(serverErrorHandler)handler
+{
+    [_activityIndicatorView stopAnimating];
+    self.backgroundColor = [UIColor whiteColor];
+    _refreshAgainBackView.hidden = NO;
+    self.handler = handler;
+}
+
+- (void)refreshAgain
+{
+    _refreshAgainBackView.hidden = YES;
+    if (_handler != nil) {
+        self.handler();
+    };
+}
+
++ (void)beginRefreshingAndAddToView:(UIView *)view
+{
+    [self beginRefreshingWithEdgeToView:UIEdgeInsetsMake(0, 0, 0, 0) backgroundColor:[UIColor whiteColor] addToView:view];
+}
+
++ (void)beginRefreshingWithEdgeToView:(UIEdgeInsets)edgeToView backgroundColor:(UIColor *)backgroundColor addToView:(UIView *)view
+{
+    if (cover_static) {//指向新的coverView前先移除掉上一个coverView，不然旧的cover永远加在view上，移除不掉了。
+        [cover_static removeFromSuperview];
+    }
+    cover_static = [[self alloc] init];
+
+    cover_static.hidden = NO;
+    cover_static.backgroundColor = backgroundColor;
+    [view addSubview:cover_static];
+    [view bringSubviewToFront:cover_static];
+        [cover_static mas_makeConstraints:^(MASConstraintMaker *make) {
+        make.edges.equalTo(view).with.insets(edgeToView);
+    }];
+    
+    [cover_static.activityIndicatorView startAnimating];
+    
+//    cover_static.edgeToView = edgeToView;
+//    cover_static.fatherView = view;
+//    [cover_static.activityIndicatorView startAnimating];
+
+}
+
+
++ (void)endRefreshing
+{
+    [cover_static.activityIndicatorView stopAnimating];
+    [cover_static removeFromSuperview];
+    cover_static = nil;
+}
+
++ (void)endRefreshingDueToServerErrorWithHandler:(serverErrorHandler)handler
+{
+    [cover_static.activityIndicatorView stopAnimating];
+    cover_static.refreshAgainBackView.hidden = NO;
+    cover_static.handler = handler;
+}
+
+//- (void)layoutSubviews
+//{
+//    [super layoutSubviews];
+//    [cover_static mas_makeConstraints:^(MASConstraintMaker *make) {
+//        make.edges.equalTo(cover_static.fatherView).with.insets(cover_static.edgeToView);
+//    }];
+//}
+
+@end
